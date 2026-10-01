@@ -1,4 +1,5 @@
-import { Outlet } from "react-router";
+import { useEffect } from "react";
+import { Navigate, Outlet } from "react-router";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -13,10 +14,20 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useEnrollmentStore } from "@/lib/enrollment-store";
 
 export default function RootLayout() {
+  const token = useAuthStore((s) => s.token);
   const role = useAuthStore((s) => s.role);
   const studentId = useAuthStore((s) => s.studentId);
-  const { loading, error, getAll } = useEnrollmentStore();
+  const { loading, error, getAll, reset } = useEnrollmentStore();
 
+  // Login แล้ว → โหลดข้อมูลจาก Backend ครั้งเดียว (ตาม role) ทุกหน้าใช้ store ร่วมกัน
+  // Logout / token หมดอายุ → ล้างข้อมูลของ user ก่อนหน้าทิ้ง
+  useEffect(() => {
+    if (token && role) getAll(role, studentId);
+    else reset();
+  }, [token, role, studentId, getAll, reset]);
+
+  // ยังไม่ Login (หรือ token หมดอายุ api.ts ล้างทิ้งแล้ว) → ไปหน้า Login
+  if (!token) return <Navigate to="/login" replace />;
   // TODO ขั้นที่ 9.2:
   //   - useEffect: Login แล้ว → getAll(role, studentId) / ยังไม่ Login → reset()
   //   - ยังไม่ Login (ไม่มี token) → <Navigate to="/login" replace />

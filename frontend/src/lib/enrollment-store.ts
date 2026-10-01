@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { api } from "@/lib/api";
 
 import type { Course, Enrollment, Student, User } from "@/lib/types";
 
@@ -25,6 +26,34 @@ type EnrollmentStore = {
   enroll: (studentId: string, courseId: string) => Promise<void>;
 };
 
+// รูปแบบข้อมูลที่ Backend ส่งมา (ต่างจาก type ฝั่ง Frontend เล็กน้อย)
+type ApiStudent = Omit<Student, "emails"> & { emails?: string[] };
+type ApiEnrollment = Enrollment & { createdAt?: string };
+
+// Backend เก็บอีเมลเป็น string[] แต่ฟอร์ม (useFieldArray) ใช้ { address }[]
+const fromApiStudent = (s: ApiStudent): Student => ({
+  studentId: s.studentId,
+  firstName: s.firstName,
+  lastName: s.lastName,
+  program: s.program,
+  interests: s.interests ?? [],
+  emails: (s.emails ?? []).map((address) => ({ address })),
+});
+
+// เลือกเฉพาะ field ที่ Frontend ใช้ (ตัด id / createdAt / updatedAt ทิ้ง)
+const toCourse = ({ courseId, courseTitle, instructors }: Course): Course => ({
+  courseId,
+  courseTitle,
+  instructors,
+});
+
+// Backend ใช้ชื่อ createdAt → Frontend ใช้ enrolledAt
+const fromApiEnrollment = (e: ApiEnrollment): Enrollment => ({
+  studentId: e.studentId,
+  courseId: e.courseId,
+  enrolledAt: e.createdAt,
+});
+
 export const useEnrollmentStore = create<EnrollmentStore>()((set) => ({
   students: [],
   courses: [],
@@ -33,11 +62,32 @@ export const useEnrollmentStore = create<EnrollmentStore>()((set) => ({
   error: null,
 
   // TODO ขั้นที่ 10.1: GET /students, /courses, /enrollments พร้อมกัน (Promise.all) ตาม role
-  getAll: async () => {
-    set({
-      loading: false,
-      error: "TODO ขั้นที่ 10.1: ยังไม่ได้เขียน getAll()",
-    });
+  getAll: async (role, studentId) => {
+    set({ loading: true, error: null });
+    try {
+      // STUDENT เรียก GET /students (ทั้งหมด) ไม่ได้ → ดึงแค่ของตัวเอง
+      const studentsRequest =
+        role === "ADMIN"
+          ? api<ApiStudent[]>("/students")
+          : studentId
+            ? api<ApiStudent>(`/students/${studentId}`).then((s) => [s])
+            : Promise.resolve([] as ApiStudent[]);
+
+      // Promise.all = ยิง 3 request พร้อมกัน รอจนครบทุกตัว (เร็วกว่ายิงทีละตัว)
+      const [students, courses, enrollments] = await Promise.all([
+        studentsRequest,
+        api<Course[]>("/courses"),
+        api<ApiEnrollment[]>("/enrollments"), // Backend กรองให้ STUDENT เห็นแค่ของตัวเอง
+      ]);
+      set({
+        students: students.map(fromApiStudent),
+        courses: courses.map(toCourse),
+        enrollments: enrollments.map(fromApiEnrollment),
+        loading: false,
+      });
+    } catch (err) {
+      set({ loading: false, error: (err as Error).message }); // → แถบ error ใน RootLayout
+    }
   },
 
   reset: () =>
@@ -50,22 +100,50 @@ export const useEnrollmentStore = create<EnrollmentStore>()((set) => ({
     }),
 
   // TODO ขั้นที่ 12.1: POST /courses → เพิ่มวิชาที่ Backend ตอบกลับลง state
-  addCourse: async () => {
-    throw new Error("TODO ขั้นที่ 12.1: ยังไม่ได้เขียน addCourse()");
+  // Add — POST /courses, body = { courseId, courseTitle, instructors }
+  addCourse: async (course) => {
+    const created = await api<Course>("/courses", {
+      method: "POST",
+      body: course,
+    });
+    set((state) => ({ courses: [...state.courses, toCourse(created)] })); // ต่อท้าย
   },
 
-  // TODO ขั้นที่ 12.1: PUT /courses → แทนที่วิชาเดิมใน state
-  updateCourse: async () => {
-    throw new Error("TODO ขั้นที่ 12.1: ยังไม่ได้เขียน updateCourse()");
+  // Update — PUT /courses (courseId แก้ไม่ได้ ใช้หาว่าจะแก้วิชาไหน)
+  updateCourse: async (course) => {
+    const updated = await api<Course>("/courses", {
+      method: "PUT",
+      body: course,
+    });
+    set((state) => ({
+      courses: state.courses.map((c) =>
+        c.courseId === updated.courseId ? toCourse(updated) : c, // แทนที่ตัวเดิม
+      ),
+    }));
   },
 
-  // TODO ขั้นที่ 12.1: DELETE /courses → ตัดวิชา (และ enrollments ของวิชานั้น) ออกจาก state
-  removeCourse: async () => {
-    throw new Error("TODO ขั้นที่ 12.1: ยังไม่ได้เขียน removeCourse()");
+  // Delete — DELETE /courses, body = { courseId }
+  removeCourse: async (courseId) => {
+    await api<Course>("/courses", {
+      method: "DELETE",
+      body: { courseId },
+    });
+    // Backend ลบ enrollments ของวิชานี้ไปแล้ว — ฝั่งนี้ตัดออกให้ตรงกัน
+    set((state) => ({
+      courses: state.courses.filter((c) => c.courseId !== courseId),
+      enrollments: state.enrollments.filter((e) => e.courseId !== courseId),
+    }));
   },
 
   // TODO ขั้นที่ 11.2: POST /enrollments → เพิ่มการลงทะเบียนที่ Backend ตอบกลับลง state
-  enroll: async () => {
-    throw new Error("TODO ขั้นที่ 11.2: ยังไม่ได้เขียน enroll()");
+  enroll: async (studentId, courseId) => {
+    const created = await api<ApiEnrollment>("/enrollments", {
+      method: "POST",
+      body: { studentId, courseId },
+    });
+    // Backend บันทึกแล้ว → เพิ่มลง state (createdAt → enrolledAt)
+    set((state) => ({
+      enrollments: [...state.enrollments, fromApiEnrollment(created)],
+    }));
   },
 }));

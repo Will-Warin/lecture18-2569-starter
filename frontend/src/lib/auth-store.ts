@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 import type { User } from "@/lib/types";
 
@@ -54,8 +55,22 @@ function authFromToken(token: string | null | undefined): AuthState {
 }
 
 // TODO ขั้นที่ 6: ครอบด้วย persist(..., { name, partialize, merge })
-export const useAuthStore = create<AuthStore>()((set) => ({
-  ...emptyAuth,
-  setAuth: (token) => set(authFromToken(token)),
-  clear: () => set(emptyAuth),
-}));
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set) => ({
+      ...emptyAuth,
+      setAuth: (token) => set(authFromToken(token)), // Login สำเร็จ → ถอด token เป็น state
+      clear: () => set(emptyAuth), // Logout / token หมดอายุ
+    }),
+    {
+      name: "lecture18-auth", // key ใน localStorage
+      // เขียนลง localStorage แค่ token
+      partialize: (state) => ({ token: state.token }),
+      // ตอนโหลดกลับ (รีเฟรชหน้า) → ถอดค่าที่เหลือจาก token
+      merge: (persisted, current) => ({
+        ...current,
+        ...authFromToken((persisted as Partial<AuthState> | undefined)?.token),
+      }),
+    },
+  ),
+);

@@ -38,6 +38,8 @@ import type { Course } from "@/lib/types";
 export function CourseFormDialog({ course }: { course?: Course }) {
   const isEdit = course !== undefined;
   // TODO ขั้นที่ 12.2: ดึง addCourse / updateCourse จาก useEnrollmentStore
+  const addCourse = useEnrollmentStore((s) => s.addCourse);
+  const updateCourse = useEnrollmentStore((s) => s.updateCourse);
   const allCourses = useEnrollmentStore((s) => s.courses);
   // โหมดแก้ไข: ไม่นับวิชาตัวเองตอนเช็กรหัสซ้ำ
   const courses = isEdit
@@ -124,8 +126,25 @@ export function CourseFormDialog({ course }: { course?: Course }) {
 
     // TODO ขั้นที่ 12.2: ส่งไป Backend — isEdit ? updateCourse (PUT) : addCourse (POST)
     //   สำเร็จ → resetForm() + ปิด popup / ไม่สำเร็จ → setServerError(ข้อความจาก Backend)
-    setSubmitting(false);
-    setServerError("TODO ขั้นที่ 12.2: ยังไม่ได้เชื่อม POST / PUT /courses");
+    // ส่งไป Backend (POST หรือ PUT /api/v3/courses) — Backend ตรวจซ้ำ
+    // รวมถึงกันชื่อวิชาซ้ำ ซึ่งฟอร์มฝั่งนี้ไม่ได้ตรวจ
+    setSubmitting(true);
+    setServerError(null);
+    try {
+      const payload = {
+        courseId: values.courseId.trim(),
+        courseTitle: values.courseTitle.trim(),
+        instructors: values.instructors,
+      };
+      if (isEdit) await updateCourse(payload); // PUT
+      else await addCourse(payload);           // POST
+      resetForm();
+      setOpen(false);                          // สำเร็จ → ปิด popup
+    } catch (err) {
+      setServerError((err as Error).message);  // Backend ปฏิเสธ → แสดงในฟอร์ม
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ต้องต่อ id / aria-* / ข้อความ error เองทุกช่อง (<FormItem/FormControl/FormMessage> จะทำแทน)

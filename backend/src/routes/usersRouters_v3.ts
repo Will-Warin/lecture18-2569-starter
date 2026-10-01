@@ -108,15 +108,11 @@ router.post("/login", async (req: Request, res: Response) => {
 
     // create jwt token
     const jwt_secret = process.env.JWT_SECRET || "this_is_my_secret";
+    // ใส่ข้อมูลผู้ใช้ไว้ใน payload ของ JWT (Frontend ถอดออกมาแสดงผลได้)
     const token = jwt.sign(
-      {
-        // create JWT Payload
-        username: user.username,
-        studentId: user.studentId,
-        role: user.role,
-      },
+      { username: user.username, studentId: user.studentId, role: user.role },
       jwt_secret,
-      { expiresIn: "30m" },
+      { expiresIn: "30m" }, // หมดอายุใน 30 นาที
     );
 
     // remove expired tokens, then store the new token in user.tokens
@@ -146,7 +142,10 @@ router.post("/login", async (req: Request, res: Response) => {
       // TODO ขั้นที่ 3: Frontend ต้องการ token ล่าสุด + role + studentId
       data: {
         username: user.username,
-        tokens: user.tokens,
+        // Frontend ใช้ 3 ค่านี้: token ล่าสุด (แนบใน Authorization header) และ role/studentId
+        token,
+        role: user.role,
+        studentId: user.studentId,
       },
     });
   } catch (err) {

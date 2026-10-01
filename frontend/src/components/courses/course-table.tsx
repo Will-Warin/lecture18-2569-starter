@@ -19,12 +19,18 @@ export function CourseTable() {
   const courses = useEnrollmentStore((s) => s.courses);
   const enrollments = useEnrollmentStore((s) => s.enrollments);
   // TODO ขั้นที่ 12.3: ดึง removeCourse จาก useEnrollmentStore
+  const removeCourse = useEnrollmentStore((s) => s.removeCourse);
   // ข้อความ error จาก Backend ตอนลบไม่สำเร็จ
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // TODO ขั้นที่ 12.3: await removeCourse(courseId) / ไม่สำเร็จ → setDeleteError(ข้อความจาก Backend)
   const handleDelete = async (courseId: string) => {
-    setDeleteError(`TODO ขั้นที่ 12.3: ยังไม่ได้เชื่อม DELETE /courses (${courseId})`);
+    setDeleteError(null);
+    try {
+      await removeCourse(courseId); // DELETE /courses
+    } catch (err) {
+      setDeleteError((err as Error).message); // แสดง "ลบไม่สำเร็จ: ..." เหนือตาราง
+    }
   };
 
   const enrollCountOf = (courseId: string) =>

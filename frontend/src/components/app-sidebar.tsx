@@ -1,5 +1,6 @@
 import { BookOpen, Home, Library, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router";
+import { api } from "@/lib/api";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +46,16 @@ export function AppSidebar() {
   const items = role ? itemsByRole[role] : [];
 
   // TODO ขั้นที่ 7: เรียก POST /users/logout ก่อน (ลบ token ใน DB) แล้วค่อย clear()
-  const handleLogout = () => {
-    clear();
+// POST /users/logout ลบ token ทั้งหมดของ user ใน DB — ไม่ว่าสำเร็จหรือไม่ก็ล้างฝั่งเราด้วย
+// (ล้างแล้ว RootLayout จะพาไปหน้า Login เอง)
+  const handleLogout = async () => {
+    try {
+      await api("/users/logout", { method: "POST" });
+    } catch {
+      // token หมดอายุไปแล้วก็ไม่เป็นไร
+    } finally {
+      clear();
+    }
   };
 
   return (

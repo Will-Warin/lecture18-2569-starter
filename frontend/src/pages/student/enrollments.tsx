@@ -32,7 +32,7 @@ import { useEnrollmentStore } from "@/lib/enrollment-store";
 
 export default function StudentEnrollmentsPage() {
   const studentId = useAuthStore((s) => s.studentId);
-  const { students, courses, enrollments } = useEnrollmentStore();
+    const { students, courses, enrollments, enroll } = useEnrollmentStore();
 
   const [open, setOpen] = useState(false);
   const [formCourse, setFormCourse] = useState<string | null>(null);
@@ -63,10 +63,19 @@ export default function StudentEnrollmentsPage() {
 
   // TODO ขั้นที่ 11.3: เรียก enroll(studentId, formCourse) จาก store
   //   สำเร็จ → ปิด popup / ไม่สำเร็จ → setServerError(ข้อความจาก Backend)
+// POST /api/v3/enrollments — Backend กันลงทะเบียนซ้ำ (409) อีกชั้น
   const handleEnroll = async () => {
     if (!studentId || !formCourse) return;
-    setSubmitting(false);
-    setServerError("TODO ขั้นที่ 11.3: ยังไม่ได้เชื่อม POST /enrollments");
+    setSubmitting(true); // ปิดปุ่มระหว่างรอ กันกดซ้ำ
+    setServerError(null);
+    try {
+      await enroll(studentId, formCourse);
+      handleOpenChange(false); // สำเร็จ → ปิด popup (ตารางอัปเดตเองเพราะ state เปลี่ยน)
+    } catch (err) {
+      setServerError((err as Error).message); // เช่น 409 "has already enrolled" → แสดงใน popup
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

@@ -17,6 +17,7 @@ import courseRouter_v3 from "./routes/coursesRouters_v3.ts";
 import userRouter_v3 from "./routes/usersRouters_v3.ts";
 import fileRouter_v1 from "./routes/fileRouters_v1.ts";
 import enrollmentRouter_v3 from "./routes/enrollmentsRouters_v3.ts";
+import cors from "cors"; // ← ย้ายไปไว้กับ import อื่นด้านบนไฟล์
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,6 +25,13 @@ const port = process.env.PORT || 3000;
 // TODO ขั้นที่ 2: เปิด CORS ให้ Frontend (http://localhost:5173) เรียก API ได้
 //   - import cors from "cors";
 //   - app.use(cors({ origin: ... })) โดยอ่าน origin จาก CORS_ORIGIN ใน .env
+// CORS middleware: อนุญาตให้ Frontend (Vite dev server คนละ origin) เรียก API ได้
+// ตั้งค่า origin ได้หลายค่าคั่นด้วย "," ผ่าน CORS_ORIGIN ใน .env
+  app.use(
+    cors({
+      origin: (process.env.CORS_ORIGIN || "http://localhost:5173").split(","),
+    }),
+  );
 
 // body parser middleware
 app.use(express.json());

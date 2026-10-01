@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LogIn } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
-import { Navigate } from "react-router";
+import { Navigate, useNavigate } from "react-router"; // ← เพิ่ม useNavigate
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,9 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api"; // ← เพิ่ม
 import { useAuthStore } from "@/lib/auth-store";
+import type { User } from "@/lib/types"; // ← เพิ่ม
 
 const loginSchema = z.object({
   username: z.string().trim().min(1, "กรอกชื่อผู้ใช้"),
@@ -28,10 +30,19 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 // TODO ขั้นที่ 7: type LoginResponse = data ที่ POST /api/v3/users/login ตอบกลับมา
+// data ที่ POST /api/v3/users/login ตอบกลับมา (ขั้นที่ 3)
+type LoginResponse = {
+  username: string;
+  token: string;
+  role: User["role"];
+  studentId?: string | null;
+};
 
 export default function LoginPage() {
   const token = useAuthStore((s) => s.token);
   // TODO ขั้นที่ 7: ดึง setAuth จาก useAuthStore และ navigate จาก useNavigate()
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const navigate = useNavigate();
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -44,9 +55,18 @@ export default function LoginPage() {
   // TODO ขั้นที่ 7: POST /users/login → setAuth(data.token) → navigate("/")
   //                 ไม่สำเร็จ → form.setError("root", { message })
   async function onSubmit(values: LoginValues) {
-    form.setError("root", {
-      message: `TODO ขั้นที่ 7: ยังไม่ได้เชื่อม POST /users/login (${values.username})`,
-    });
+    try {
+      const data = await api<LoginResponse>("/users/login", {
+        method: "POST",
+        body: values, // { username, password }
+        auth: false, // ยังไม่มี token → ไม่ต้องแนบ
+      });
+      setAuth(data.token); // เก็บ token ลง auth-store
+      navigate("/", { replace: true }); // ไปหน้าแรก
+    } catch (err) {
+      // เช่น 401 "Invalid username or password" → แสดงใต้ฟอร์ม
+      form.setError("root", { message: (err as Error).message });
+    }
   }
 
   return (
