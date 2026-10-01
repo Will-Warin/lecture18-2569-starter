@@ -53,7 +53,7 @@ function authFromToken(token: string | null | undefined): AuthState {
   };
 }
 
-// TODO ขั้นที่ 7: ครอบด้วย persist(..., { name, partialize, merge })
+// TODO ขั้นที่ 6: ครอบด้วย persist(..., { name, partialize, merge })
 export const useAuthStore = create<AuthStore>()((set) => ({
   ...emptyAuth,
   setAuth: (token) => set(authFromToken(token)),

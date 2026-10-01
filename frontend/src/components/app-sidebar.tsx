@@ -44,7 +44,7 @@ export function AppSidebar() {
   const clear = useAuthStore((s) => s.clear);
   const items = role ? itemsByRole[role] : [];
 
-  // TODO ขั้นที่ 8: เรียก POST /users/logout ก่อน (ลบ token ใน DB) แล้วค่อย clear()
+  // TODO ขั้นที่ 7: เรียก POST /users/logout ก่อน (ลบ token ใน DB) แล้วค่อย clear()
   const handleLogout = () => {
     clear();
   };

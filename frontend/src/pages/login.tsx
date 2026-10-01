@@ -27,11 +27,11 @@ const loginSchema = z.object({
 });
 type LoginValues = z.infer<typeof loginSchema>;
 
-// TODO ขั้นที่ 8: type LoginResponse = data ที่ POST /api/v3/users/login ตอบกลับมา
+// TODO ขั้นที่ 7: type LoginResponse = data ที่ POST /api/v3/users/login ตอบกลับมา
 
 export default function LoginPage() {
   const token = useAuthStore((s) => s.token);
-  // TODO ขั้นที่ 8: ดึง setAuth จาก useAuthStore และ navigate จาก useNavigate()
+  // TODO ขั้นที่ 7: ดึง setAuth จาก useAuthStore และ navigate จาก useNavigate()
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -41,11 +41,11 @@ export default function LoginPage() {
   // Login อยู่แล้ว → กลับหน้าแรก
   if (token) return <Navigate to="/" replace />;
 
-  // TODO ขั้นที่ 8: POST /users/login → setAuth(data.token) → navigate("/")
+  // TODO ขั้นที่ 7: POST /users/login → setAuth(data.token) → navigate("/")
   //                 ไม่สำเร็จ → form.setError("root", { message })
   async function onSubmit(values: LoginValues) {
     form.setError("root", {
-      message: `TODO ขั้นที่ 8: ยังไม่ได้เชื่อม POST /users/login (${values.username})`,
+      message: `TODO ขั้นที่ 7: ยังไม่ได้เชื่อม POST /users/login (${values.username})`,
     });
   }
 
